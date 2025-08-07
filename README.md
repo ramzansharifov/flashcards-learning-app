@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
@@ -67,3 +68,7 @@ export default tseslint.config([
   },
 ])
 ```
+=======
+# flashcards-learning-app
+Flashcards Learning Platform with Firebase (React.js, Firestore, Auth).
+>>>>>>> 1678ca087971d19ef7013bba835d82a2a62e02e6
