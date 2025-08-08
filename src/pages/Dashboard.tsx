@@ -4,7 +4,7 @@ import { db } from "../firebase";
 import { collection, getDocs, addDoc } from "firebase/firestore";
 import { useUser } from "../hooks/useUser";
 
-import WorkspaceList from "../components/dashboard/workspace/WorkSpaceList";
+import WorkspaceList from "../components/dashboard/workspace/WorkspaceList";
 import TopicList from "../components/dashboard/topic/TopicList";
 import CardList from "../components/dashboard/crds/CardList";
 
