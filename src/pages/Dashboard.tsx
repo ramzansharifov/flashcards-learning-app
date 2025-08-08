@@ -4,6 +4,10 @@ import { db } from "../firebase";
 import { collection, getDocs, addDoc } from "firebase/firestore";
 import { useUser } from "../hooks/useUser";
 
+import WorkspaceList from "../components/dashboard/workspace/WorkSpaceList";
+import TopicList from "../components/dashboard/topic/TopicList";
+import CardList from "../components/dashboard/crds/CardList";
+
 type Workspace = { id: string; name: string };
 type Topic = { id: string; name: string };
 type Card = { id: string; front: string; back: string };
@@ -11,7 +15,7 @@ type Card = { id: string; front: string; back: string };
 export default function Dashboard() {
     const { user } = useUser();
 
-    // 1. State
+    // State
     const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
     const [topics, setTopics] = useState<Topic[]>([]);
     const [cards, setCards] = useState<Card[]>([]);
@@ -24,33 +28,31 @@ export default function Dashboard() {
     const [front, setFront] = useState("");
     const [back, setBack] = useState("");
 
-    // 2. Fetch workspaces
+    // Fetch workspaces
     useEffect(() => {
         if (!user) return;
-        const fetchWorkspaces = async () => {
+        (async () => {
             const snap = await getDocs(collection(db, "users", user.uid, "workspaces"));
             setWorkspaces(snap.docs.map(d => ({ id: d.id, name: d.data().name })));
-        };
-        fetchWorkspaces();
+        })();
     }, [user]);
 
-    // 3. Fetch topics when a workspace selected
+    // Fetch topics
     useEffect(() => {
         if (!user || !selectedWorkspaceId) return;
-        const fetchTopics = async () => {
+        (async () => {
             const snap = await getDocs(
                 collection(db, "users", user.uid, "workspaces", selectedWorkspaceId, "topics")
             );
             setTopics(snap.docs.map(d => ({ id: d.id, name: d.data().name })));
-        };
-        fetchTopics();
-        setSelectedTopicId(null); // сброс темы
+        })();
+        setSelectedTopicId(null);
     }, [user, selectedWorkspaceId]);
 
-    // 4. Fetch cards when a topic selected
+    // Fetch cards
     useEffect(() => {
         if (!user || !selectedWorkspaceId || !selectedTopicId) return;
-        const fetchCards = async () => {
+        (async () => {
             const snap = await getDocs(
                 collection(
                     db,
@@ -65,25 +67,24 @@ export default function Dashboard() {
                 front: d.data().front,
                 back: d.data().back,
             })));
-        };
-        fetchCards();
+        })();
     }, [user, selectedWorkspaceId, selectedTopicId]);
 
-    // 5. Handlers for adding
+    // Handlers
     const handleAddWorkspace = async () => {
         if (!wsName.trim() || !user) return;
         const ref = collection(db, "users", user.uid, "workspaces");
         const doc = await addDoc(ref, { name: wsName.trim() });
-        setWsName("");
         setWorkspaces(prev => [...prev, { id: doc.id, name: wsName.trim() }]);
+        setWsName("");
     };
 
     const handleAddTopic = async () => {
         if (!topicName.trim() || !user || !selectedWorkspaceId) return;
         const ref = collection(db, "users", user.uid, "workspaces", selectedWorkspaceId, "topics");
         const doc = await addDoc(ref, { name: topicName.trim() });
-        setTopicName("");
         setTopics(prev => [...prev, { id: doc.id, name: topicName.trim() }]);
+        setTopicName("");
     };
 
     const handleAddCard = async () => {
@@ -96,124 +97,44 @@ export default function Dashboard() {
             "cards"
         );
         const doc = await addDoc(ref, { front: front.trim(), back: back.trim() });
+        setCards(prev => [...prev, { id: doc.id, front: front.trim(), back: back.trim() }]);
         setFront("");
         setBack("");
-        setCards(prev => [...prev, { id: doc.id, front: front.trim(), back: back.trim() }]);
     };
 
-    // 6. UI
     return (
         <div className="p-4 max-w-2xl mx-auto space-y-6">
-            {/* —————— Level 1: Workspaces —————— */}
-            {selectedWorkspaceId === null && (
-                <>
-                    <h2 className="text-2xl font-bold">Workspaces</h2>
-                    <div className="flex gap-2">
-                        <input
-                            value={wsName}
-                            onChange={e => setWsName(e.target.value)}
-                            placeholder="New workspace"
-                            className="input input-bordered flex-grow"
-                        />
-                        <button onClick={handleAddWorkspace} className="btn btn-primary">
-                            Add
-                        </button>
-                    </div>
-                    <ul className="mt-4 space-y-2">
-                        {workspaces.map(ws => (
-                            <li
-                                key={ws.id}
-                                className="p-2 border rounded hover:bg-gray-100 cursor-pointer"
-                                onClick={() => setSelectedWorkspaceId(ws.id)}
-                            >
-                                {ws.name}
-                            </li>
-                        ))}
-                    </ul>
-                </>
-            )}
-
-            {/* —————— Level 2: Topics —————— */}
-            {selectedWorkspaceId !== null && selectedTopicId === null && (
-                <>
-                    <button
-                        className="text-sm text-blue-500 mb-2"
-                        onClick={() => setSelectedWorkspaceId(null)}
-                    >
-                        ← Back to Workspaces
-                    </button>
-                    <h2 className="text-2xl font-bold">Topics</h2>
-                    <div className="flex gap-2">
-                        <input
-                            value={topicName}
-                            onChange={e => setTopicName(e.target.value)}
-                            placeholder="New topic"
-                            className="input input-bordered flex-grow"
-                        />
-                        <button onClick={handleAddTopic} className="btn btn-primary">
-                            Add
-                        </button>
-                    </div>
-                    <ul className="mt-4 space-y-2">
-                        {topics.map(t => (
-                            <li
-                                key={t.id}
-                                className="p-2 border rounded hover:bg-gray-100 cursor-pointer"
-                                onClick={() => setSelectedTopicId(t.id)}
-                            >
-                                {t.name}
-                            </li>
-                        ))}
-                    </ul>
-                </>
-            )}
-
-            {/* —————— Level 3: Cards —————— */}
-            {selectedWorkspaceId !== null && selectedTopicId !== null && (
-                <>
-                    <div className="flex items-center gap-4 mb-2">
-                        <button
-                            className="text-sm text-blue-500"
-                            onClick={() => setSelectedTopicId(null)}
-                        >
-                            ← Back to Topics
-                        </button>
-                        <button
-                            className="text-sm text-blue-500"
-                            onClick={() => {
-                                setSelectedTopicId(null);
-                                setSelectedWorkspaceId(null);
-                            }}
-                        >
-                            ← Back to Workspaces
-                        </button>
-                    </div>
-                    <h2 className="text-2xl font-bold">Flashcards</h2>
-                    <div className="space-y-2 mb-4">
-                        <input
-                            value={front}
-                            onChange={e => setFront(e.target.value)}
-                            placeholder="Front text"
-                            className="input input-bordered w-full"
-                        />
-                        <input
-                            value={back}
-                            onChange={e => setBack(e.target.value)}
-                            placeholder="Back text"
-                            className="input input-bordered w-full"
-                        />
-                        <button onClick={handleAddCard} className="btn btn-primary w-full">
-                            Add Card
-                        </button>
-                    </div>
-                    <ul className="space-y-2">
-                        {cards.map(c => (
-                            <li key={c.id} className="p-2 border rounded">
-                                <strong>{c.front}</strong> → {c.back}
-                            </li>
-                        ))}
-                    </ul>
-                </>
+            {selectedWorkspaceId === null ? (
+                <WorkspaceList
+                    workspaces={workspaces}
+                    newName={wsName}
+                    onNameChange={setWsName}
+                    onAdd={handleAddWorkspace}
+                    onSelect={setSelectedWorkspaceId}
+                />
+            ) : selectedTopicId === null ? (
+                <TopicList
+                    topics={topics}
+                    newName={topicName}
+                    onNameChange={setTopicName}
+                    onAdd={handleAddTopic}
+                    onSelect={setSelectedTopicId}
+                    onBack={() => setSelectedWorkspaceId(null)}
+                />
+            ) : (
+                <CardList
+                    cards={cards}
+                    front={front}
+                    back={back}
+                    onFrontChange={setFront}
+                    onBackChange={setBack}
+                    onAdd={handleAddCard}
+                    onBackTopics={() => setSelectedTopicId(null)}
+                    onBackWorkspaces={() => {
+                        setSelectedTopicId(null);
+                        setSelectedWorkspaceId(null);
+                    }}
+                />
             )}
         </div>
     );
