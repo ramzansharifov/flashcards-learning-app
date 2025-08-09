@@ -1,85 +1,38 @@
-// src/pages/TrainingPage.tsx
 import { useEffect, useState } from "react";
-import { db } from "../firebase";
-import {
-    collection,
-    getDocs,
-    doc,
-    updateDoc,
-    serverTimestamp,
-} from "firebase/firestore";
-import { useUser } from "../hooks/useUser";
 import { useNavigate } from "react-router-dom";
+import { useWorkspaces } from "../hooks/useWorkspaces";
+import { useTopics } from "../hooks/useTopics";
+import { useCards } from "../hooks/useCards";
 
-type Workspace = { id: string; name: string };
-type Topic = { id: string; name: string; progress?: number };
-type Card = { id: string; front: string; back: string };
+type Stage = "selectWS" | "selectTopic" | "run" | "result";
 
-export default function Training() {
-    const { user } = useUser();
+export default function TrainingPage() {
     const navigate = useNavigate();
 
-    // 1. Выбор workspace и topic
-    const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-    const [topics, setTopics] = useState<Topic[]>([]);
-    const [stage, setStage] = useState<"selectWS" | "selectTopic" | "run" | "result">("selectWS");
-
+    // selections
+    const [stage, setStage] = useState<Stage>("selectWS");
     const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
     const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
 
-    // 2. Данные карточек и прогресс
-    const [cards, setCards] = useState<Card[]>([]);
+    // data via hooks
+    const { workspaces } = useWorkspaces();
+    const { topics, updateTopicProgress } = useTopics(selectedWorkspaceId);
+    const { cards } = useCards(selectedWorkspaceId, selectedTopicId);
+
+    // run state
     const [currentIndex, setCurrentIndex] = useState(0);
     const [flipped, setFlipped] = useState(false);
     const [knownCount, setKnownCount] = useState(0);
-    const [answers, setAnswers] = useState<("know" | "dontKnow")[]>([]);
 
-    // 3. Fetch workspaces
+    // reset run when cards loaded
     useEffect(() => {
-        if (!user) return;
-        (async () => {
-            const snap = await getDocs(collection(db, "users", user.uid, "workspaces"));
-            setWorkspaces(snap.docs.map(d => ({ id: d.id, name: d.data().name })));
-        })();
-    }, [user]);
+        if (stage === "run") {
+            setCurrentIndex(0);
+            setFlipped(false);
+            setKnownCount(0);
+        }
+    }, [stage, selectedWorkspaceId, selectedTopicId]);
 
-    // 4. Fetch topics после выбора workspace
-    useEffect(() => {
-        if (!user || !selectedWorkspaceId) return;
-        (async () => {
-            const snap = await getDocs(
-                collection(db, "users", user.uid, "workspaces", selectedWorkspaceId, "topics")
-            );
-            setTopics(snap.docs.map(d => ({
-                id: d.id,
-                name: d.data().name,
-                progress: d.data().progress || 0
-            })));
-        })();
-    }, [user, selectedWorkspaceId]);
-
-    // 5. Подгрузка карточек при начале run
-    useEffect(() => {
-        if (stage !== "run" || !selectedWorkspaceId || !selectedTopicId || !user) return;
-        (async () => {
-            const snap = await getDocs(
-                collection(
-                    db,
-                    "users", user.uid,
-                    "workspaces", selectedWorkspaceId,
-                    "topics", selectedTopicId,
-                    "cards"
-                )
-            );
-            setCards(snap.docs.map(d => ({
-                id: d.id,
-                front: d.data().front,
-                back: d.data().back,
-            })));
-        })();
-    }, [stage, user, selectedWorkspaceId, selectedTopicId]);
-
-    // 6. Обработчики
     const handleSelectWS = (id: string) => {
         setSelectedWorkspaceId(id);
         setStage("selectTopic");
@@ -90,33 +43,26 @@ export default function Training() {
         setStage("run");
     };
 
-    const handleFlip = () => {
-        setFlipped(prev => !prev);
-    };
+    const handleFlip = () => setFlipped(p => !p);
 
-    const handleAnswer = (ans: "know" | "dontKnow") => {
-        if (!user) return;
-        setAnswers(prev => [...prev, ans]);
-        if (ans === "know") setKnownCount(prev => prev + 1);
-        setFlipped(false);
+    const handleAnswer = async (ans: "know" | "dontKnow") => {
+        const nextKnown = knownCount + (ans === "know" ? 1 : 0);
+
         if (currentIndex + 1 < cards.length) {
-            setCurrentIndex(prev => prev + 1);
-        } else {
-            setStage("result");
-            // сохраняем прогресс
-            (async () => {
-                const percent = Math.round((knownCount + (ans === "know" ? 1 : 0)) / cards.length * 100);
-                const topicRef = doc(
-                    db,
-                    "users", user.uid,
-                    "workspaces", selectedWorkspaceId!,
-                    "topics", selectedTopicId!
-                );
-                await updateDoc(topicRef, {
-                    progress: percent,
-                    lastTrained: serverTimestamp(),
-                });
-            })();
+            setKnownCount(nextKnown);
+            setCurrentIndex(i => i + 1);
+            setFlipped(false);
+            return;
+        }
+
+        // finish
+        setKnownCount(nextKnown);
+        setStage("result");
+
+        // persist progress
+        if (selectedWorkspaceId && selectedTopicId && cards.length > 0) {
+            const percent = Math.round((nextKnown / cards.length) * 100);
+            await updateTopicProgress(selectedTopicId, percent);
         }
     };
 
@@ -125,15 +71,14 @@ export default function Training() {
             setStage("selectWS");
             setSelectedWorkspaceId(null);
         } else if (stage === "selectWS") {
-            navigate("/"); // вернуться на Dashboard
+            navigate("/");
         } else {
-            // выйти из тренировки на выбор тем
             setStage("selectTopic");
             setSelectedTopicId(null);
         }
     };
 
-    // 7. UI-рендеринг по стадиям
+    // minimal UI (same as before)
     return (
         <div className="p-4 max-w-2xl mx-auto">
             {stage === "selectWS" && (
@@ -166,7 +111,7 @@ export default function Training() {
                                 className="p-2 border rounded hover:bg-gray-100 cursor-pointer"
                                 onClick={() => handleSelectTopic(t.id)}
                             >
-                                {t.name} ({t.progress}%)
+                                {t.name} ({t.progress ?? 0}%)
                             </li>
                         ))}
                     </ul>
@@ -178,23 +123,14 @@ export default function Training() {
                     <button onClick={handleBack} className="text-sm text-blue-500 mb-2">
                         ← Exit Training
                     </button>
-                    <div
-                        className="p-6 border rounded mb-4 cursor-pointer select-none"
-                        onClick={handleFlip}
-                    >
+                    <div className="p-6 border rounded mb-4 cursor-pointer select-none" onClick={handleFlip}>
                         {flipped ? cards[currentIndex].back : cards[currentIndex].front}
                     </div>
                     <div className="flex gap-2">
-                        <button
-                            onClick={() => handleAnswer("dontKnow")}
-                            className="btn btn-outline flex-grow"
-                        >
+                        <button onClick={() => handleAnswer("dontKnow")} className="btn btn-outline flex-grow">
                             Don’t Know
                         </button>
-                        <button
-                            onClick={() => handleAnswer("know")}
-                            className="btn btn-primary flex-grow"
-                        >
+                        <button onClick={() => handleAnswer("know")} className="btn btn-primary flex-grow">
                             Know
                         </button>
                     </div>
@@ -209,9 +145,9 @@ export default function Training() {
                     <h2 className="text-xl font-bold mb-4">Results</h2>
                     <p>
                         You knew {knownCount} out of {cards.length} cards (
-                        {Math.round((knownCount / cards.length) * 100)}%).
+                        {cards.length ? Math.round((knownCount / cards.length) * 100) : 0}%).
                     </p>
-                    <button onClick={() => navigate("/training")} className="btn btn-primary mt-4">
+                    <button onClick={() => window.location.assign("/training")} className="btn btn-primary mt-4">
                         Try Another Topic
                     </button>
                     <button onClick={() => navigate("/")} className="btn btn-outline mt-2">
