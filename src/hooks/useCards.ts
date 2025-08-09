@@ -1,19 +1,31 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   collection,
   addDoc,
-  getDocs,
-  query,
-  orderBy,
   serverTimestamp,
   doc,
   updateDoc,
   deleteDoc,
+  query,
+  orderBy,
+  onSnapshot,
   increment,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useUser } from "./useUser";
-import type { Card } from "../types/models";
+import { notify } from "../lib/notify";
+
+export type Card = {
+  id: string;
+  front: string;
+  back: string;
+  createdAt?: any;
+  lastResult?: "know" | "dontKnow";
+  seenCount?: number;
+  knownCount?: number;
+  lastAnsweredAt?: any;
+};
 
 export function useCards(workspaceId: string | null, topicId: string | null) {
   const { user } = useUser();
@@ -21,58 +33,14 @@ export function useCards(workspaceId: string | null, topicId: string | null) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refetch = useCallback(async () => {
-    if (!user || !workspaceId || !topicId) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const q = query(
-        collection(
-          db,
-          "users",
-          user.uid,
-          "workspaces",
-          workspaceId,
-          "topics",
-          topicId,
-          "cards"
-        ),
-        orderBy("createdAt", "asc")
-      );
-      const snap = await getDocs(q);
-      setCards(
-        snap.docs.map((d) => {
-          const data = d.data();
-          return {
-            id: d.id,
-            front: data.front,
-            back: data.back,
-            createdAt: data.createdAt,
-            lastResult: data.lastResult ?? undefined, // null -> undefined
-            seenCount: data.seenCount ?? 0,
-            knownCount: data.knownCount ?? 0,
-            lastAnsweredAt: data.lastAnsweredAt ?? undefined,
-          };
-        })
-      );
-    } catch (e: any) {
-      setError(e.message ?? "Failed to load cards");
-    } finally {
-      setLoading(false);
-    }
-  }, [user, workspaceId, topicId]);
-
   useEffect(() => {
-    setCards([]);
-    void refetch();
-  }, [refetch]);
-
-  const addCard = useCallback(
-    async (front: string, back: string) => {
-      if (!user || !workspaceId || !topicId || !front.trim() || !back.trim())
-        return;
-
-      const col = collection(
+    if (!user || !workspaceId || !topicId) {
+      setCards([]);
+      return;
+    }
+    setLoading(true);
+    const q = query(
+      collection(
         db,
         "users",
         user.uid,
@@ -81,63 +49,44 @@ export function useCards(workspaceId: string | null, topicId: string | null) {
         "topics",
         topicId,
         "cards"
-      );
+      ),
+      orderBy("createdAt", "asc")
+    );
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setCards(
+          snap.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              front: data.front,
+              back: data.back,
+              createdAt: data.createdAt,
+              lastResult: data.lastResult ?? undefined,
+              seenCount: data.seenCount ?? 0,
+              knownCount: data.knownCount ?? 0,
+              lastAnsweredAt: data.lastAnsweredAt ?? undefined,
+            };
+          })
+        );
+        setLoading(false);
+      },
+      (err) => {
+        setError(err.message);
+        setLoading(false);
+        notify.err(err.message);
+      }
+    );
+    return () => unsub();
+  }, [user, workspaceId, topicId]);
 
-      // Не пишем lastResult/lastAnsweredAt вообще
-      const docRef = await addDoc(col, {
-        front: front.trim(),
-        back: back.trim(),
-        createdAt: serverTimestamp(),
-        seenCount: 0,
-        knownCount: 0,
-      });
-
-      setCards((prev) => [
-        ...prev,
-        {
-          id: docRef.id, // <-- важно: id, НЕ _id
-          front: front.trim(),
-          back: back.trim(),
-          seenCount: 0,
-          knownCount: 0,
-        },
-      ]);
-    },
-    [user, workspaceId, topicId]
-  );
-
-  const updateCard = useCallback(
-    async (cardId: string, updates: Partial<Pick<Card, "front" | "back">>) => {
-      if (!user || !workspaceId || !topicId || !cardId) return;
-      const cRef = doc(
-        db,
-        "users",
-        user.uid,
-        "workspaces",
-        workspaceId,
-        "topics",
-        topicId,
-        "cards",
-        cardId
-      );
-      const payload: any = {};
-      if (typeof updates.front === "string")
-        payload.front = updates.front.trim();
-      if (typeof updates.back === "string") payload.back = updates.back.trim();
-      if (Object.keys(payload).length === 0) return;
-      await updateDoc(cRef, payload);
-      setCards((prev) =>
-        prev.map((c) => (c.id === cardId ? { ...c, ...payload } : c))
-      );
-    },
-    [user, workspaceId, topicId]
-  );
-
-  const deleteCard = useCallback(
-    async (cardId: string) => {
-      if (!user || !workspaceId || !topicId || !cardId) return;
-      await deleteDoc(
-        doc(
+  const addCard = useCallback(
+    async (front: string, back: string) => {
+      try {
+        if (!user || !workspaceId || !topicId || !front.trim() || !back.trim())
+          return;
+        const col = collection(
           db,
           "users",
           user.uid,
@@ -145,57 +94,231 @@ export function useCards(workspaceId: string | null, topicId: string | null) {
           workspaceId,
           "topics",
           topicId,
-          "cards",
-          cardId
-        )
-      );
-      setCards((prev) => prev.filter((c) => c.id !== cardId));
+          "cards"
+        );
+        await addDoc(col, {
+          front: front.trim(),
+          back: back.trim(),
+          createdAt: serverTimestamp(),
+          seenCount: 0,
+          knownCount: 0,
+        });
+        // counters
+        await updateDoc(
+          doc(
+            db,
+            "users",
+            user.uid,
+            "workspaces",
+            workspaceId,
+            "topics",
+            topicId
+          ),
+          { cardsCount: increment(1) }
+        );
+        await updateDoc(doc(db, "users", user.uid, "workspaces", workspaceId), {
+          cardsCount: increment(1),
+        });
+        notify.ok("Card created");
+      } catch (e: any) {
+        notify.err(e.message);
+      }
+    },
+    [user, workspaceId, topicId]
+  );
+
+  const addCardsBulk = useCallback(
+    async (items: { front: string; back: string }[]) => {
+      try {
+        if (!user || !workspaceId || !topicId) return;
+        const filtered = items
+          .map((i) => ({
+            front: i.front?.trim() ?? "",
+            back: i.back?.trim() ?? "",
+          }))
+          .filter((i) => i.front && i.back);
+        if (!filtered.length) return;
+
+        const col = collection(
+          db,
+          "users",
+          user.uid,
+          "workspaces",
+          workspaceId,
+          "topics",
+          topicId,
+          "cards"
+        );
+        let batch = writeBatch(db);
+        let n = 0;
+        for (const it of filtered) {
+          const ref = doc(col);
+          batch.set(ref, {
+            front: it.front,
+            back: it.back,
+            createdAt: serverTimestamp(),
+            seenCount: 0,
+            knownCount: 0,
+          });
+          n++;
+          if (n % 450 === 0) {
+            await batch.commit();
+            batch = writeBatch(db);
+          }
+        }
+        await batch.commit();
+        await updateDoc(
+          doc(
+            db,
+            "users",
+            user.uid,
+            "workspaces",
+            workspaceId,
+            "topics",
+            topicId
+          ),
+          { cardsCount: increment(filtered.length) }
+        );
+        await updateDoc(doc(db, "users", user.uid, "workspaces", workspaceId), {
+          cardsCount: increment(filtered.length),
+        });
+        notify.ok(`Imported ${filtered.length} cards`);
+      } catch (e: any) {
+        notify.err(e.message);
+      }
+    },
+    [user, workspaceId, topicId]
+  );
+
+  const updateCard = useCallback(
+    async (cardId: string, updates: { front?: string; back?: string }) => {
+      try {
+        if (!user || !workspaceId || !topicId || !cardId) return;
+        const payload: any = {};
+        if (typeof updates.front === "string")
+          payload.front = updates.front.trim();
+        if (typeof updates.back === "string")
+          payload.back = updates.back.trim();
+        if (!Object.keys(payload).length) return;
+        await updateDoc(
+          doc(
+            db,
+            "users",
+            user.uid,
+            "workspaces",
+            workspaceId,
+            "topics",
+            topicId,
+            "cards",
+            cardId
+          ),
+          payload
+        );
+        notify.ok("Card updated");
+      } catch (e: any) {
+        notify.err(e.message);
+      }
+    },
+    [user, workspaceId, topicId]
+  );
+
+  const deleteCard = useCallback(
+    async (cardId: string) => {
+      try {
+        if (!user || !workspaceId || !topicId || !cardId) return;
+        await deleteDoc(
+          doc(
+            db,
+            "users",
+            user.uid,
+            "workspaces",
+            workspaceId,
+            "topics",
+            topicId,
+            "cards",
+            cardId
+          )
+        );
+        await updateDoc(
+          doc(
+            db,
+            "users",
+            user.uid,
+            "workspaces",
+            workspaceId,
+            "topics",
+            topicId
+          ),
+          { cardsCount: increment(-1) }
+        );
+        await updateDoc(doc(db, "users", user.uid, "workspaces", workspaceId), {
+          cardsCount: increment(-1),
+        });
+        notify.ok("Card deleted");
+      } catch (e: any) {
+        notify.err(e.message);
+      }
     },
     [user, workspaceId, topicId]
   );
 
   const setCardResult = useCallback(
     async (cardId: string, result: "know" | "dontKnow") => {
-      if (!user || !workspaceId || !topicId || !cardId) return;
-      const cRef = doc(
-        db,
-        "users",
-        user.uid,
-        "workspaces",
-        workspaceId,
-        "topics",
-        topicId,
-        "cards",
-        cardId
-      );
-      await updateDoc(cRef, {
-        lastResult: result,
-        lastAnsweredAt: serverTimestamp(),
-        seenCount: increment(1),
-        knownCount: result === "know" ? increment(1) : increment(0),
-      });
-      setCards((prev) =>
-        prev.map((c) =>
-          c.id === cardId
-            ? {
-                ...c,
-                lastResult: result,
-                seenCount: (c.seenCount ?? 0) + 1,
-                knownCount: (c.knownCount ?? 0) + (result === "know" ? 1 : 0),
-              }
-            : c
-        )
-      );
+      try {
+        if (!user || !workspaceId || !topicId || !cardId) return;
+        const prev = cards.find((c) => c.id === cardId)?.lastResult;
+        const deltaKnown =
+          (prev === "know" ? -1 : 0) + (result === "know" ? 1 : 0); // -1/0/+1
+
+        await updateDoc(
+          doc(
+            db,
+            "users",
+            user.uid,
+            "workspaces",
+            workspaceId,
+            "topics",
+            topicId,
+            "cards",
+            cardId
+          ),
+          {
+            lastResult: result,
+            lastAnsweredAt: serverTimestamp(),
+            seenCount: increment(1),
+            knownCount: result === "know" ? increment(1) : increment(0),
+          }
+        );
+
+        if (deltaKnown !== 0) {
+          await updateDoc(
+            doc(
+              db,
+              "users",
+              user.uid,
+              "workspaces",
+              workspaceId,
+              "topics",
+              topicId
+            ),
+            {
+              knownCount: increment(deltaKnown),
+            }
+          );
+        }
+      } catch (e: any) {
+        notify.err(e.message);
+      }
     },
-    [user, workspaceId, topicId]
+    [user, workspaceId, topicId, cards]
   );
 
   return {
     cards,
     loading,
     error,
-    refetch,
     addCard,
+    addCardsBulk,
     updateCard,
     deleteCard,
     setCardResult,

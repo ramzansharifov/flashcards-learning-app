@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useWorkspaces } from "../hooks/useWorkspaces";
 import { useTopics } from "../hooks/useTopics";
 import { useCards } from "../hooks/useCards";
+import { useNavigate } from "react-router-dom";
 import WorkspaceList from "../components/dashboard/workspace/WorkspaceList";
 import TopicList from "../components/dashboard/topic/TopicList";
 import CardList from "../components/dashboard/crds/CardList";
@@ -10,11 +11,7 @@ import CardList from "../components/dashboard/crds/CardList";
 export default function Dashboard() {
     const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
     const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
-
-    const [wsName, setWsName] = useState("");
-    const [topicName, setTopicName] = useState("");
-    const [front, setFront] = useState("");
-    const [back, setBack] = useState("");
+    const navigate = useNavigate();
 
     const {
         workspaces, loading: wsLoading, error: wsError,
@@ -31,28 +28,10 @@ export default function Dashboard() {
         loading: cLoading,
         error: cError,
         addCard,
+        addCardsBulk,
         updateCard,
         deleteCard,
     } = useCards(selectedWorkspaceId, selectedTopicId);
-
-    const handleAddWorkspace = async () => {
-        if (!wsName.trim()) return;
-        await addWorkspace(wsName);
-        setWsName("");
-    };
-
-    const handleAddTopic = async () => {
-        if (!topicName.trim()) return;
-        await addTopic(topicName);
-        setTopicName("");
-    };
-
-    const handleAddCard = async () => {
-        if (!front.trim() || !back.trim()) return;
-        await addCard(front, back);
-        setFront("");
-        setBack("");
-    };
 
     return (
         <div className="p-4 max-w-3xl mx-auto space-y-6">
@@ -68,10 +47,8 @@ export default function Dashboard() {
             {selectedWorkspaceId === null ? (
                 <WorkspaceList
                     workspaces={workspaces}
-                    newName={wsName}
-                    onNameChange={setWsName}
-                    onAdd={handleAddWorkspace}
                     onSelect={setSelectedWorkspaceId}
+                    onAdd={addWorkspace}
                     onRename={updateWorkspaceName}
                     onDelete={async (id) => {
                         if (selectedWorkspaceId === id) setSelectedWorkspaceId(null);
@@ -81,32 +58,25 @@ export default function Dashboard() {
             ) : selectedTopicId === null ? (
                 <TopicList
                     topics={topics}
-                    newName={topicName}
-                    onNameChange={setTopicName}
-                    onAdd={handleAddTopic}
                     onSelect={setSelectedTopicId}
+                    onAdd={addTopic}
                     onRename={updateTopicName}
-                    onDelete={async (id) => {
-                        if (selectedTopicId === id) setSelectedTopicId(null);
-                        await deleteTopic(id);
-                    }}
+                    onDelete={async (id) => { if (selectedTopicId === id) setSelectedTopicId(null); await deleteTopic(id); }}
                     onBack={() => setSelectedWorkspaceId(null)}
+                    onTrain={(topicId) => {
+                        if (!selectedWorkspaceId) return;
+                        navigate(`/training/${selectedWorkspaceId}/${topicId}`);
+                    }}
                 />
             ) : (
                 <CardList
                     cards={cards}
-                    front={front}
-                    back={back}
-                    onFrontChange={setFront}
-                    onBackChange={setBack}
-                    onAdd={handleAddCard}
+                    onAdd={addCard}
                     onUpdate={updateCard}
                     onDelete={deleteCard}
+                    onAddBulk={addCardsBulk}
                     onBackTopics={() => setSelectedTopicId(null)}
-                    onBackWorkspaces={() => {
-                        setSelectedTopicId(null);
-                        setSelectedWorkspaceId(null);
-                    }}
+                    onBackWorkspaces={() => { setSelectedTopicId(null); setSelectedWorkspaceId(null); }}
                 />
             )}
         </div>
