@@ -6,11 +6,18 @@ import {
   query,
   orderBy,
   serverTimestamp,
+  doc,
+  updateDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useUser } from "./useUser";
 import type { Card } from "../types/models";
 
+/**
+ * Хук для карточек внутри темы.
+ * CRUD: load, add, update, delete.
+ */
 export function useCards(workspaceId: string | null, topicId: string | null) {
   const { user } = useUser();
   const [cards, setCards] = useState<Card[]>([]);
@@ -52,7 +59,7 @@ export function useCards(workspaceId: string | null, topicId: string | null) {
   }, [user, workspaceId, topicId]);
 
   useEffect(() => {
-    setCards([]); // reset on selection change
+    setCards([]);
     void refetch();
   }, [refetch]);
 
@@ -83,5 +90,53 @@ export function useCards(workspaceId: string | null, topicId: string | null) {
     [user, workspaceId, topicId]
   );
 
-  return { cards, loading, error, addCard, refetch };
+  const updateCard = useCallback(
+    async (cardId: string, updates: Partial<Pick<Card, "front" | "back">>) => {
+      if (!user || !workspaceId || !topicId || !cardId) return;
+      const cRef = doc(
+        db,
+        "users",
+        user.uid,
+        "workspaces",
+        workspaceId,
+        "topics",
+        topicId,
+        "cards",
+        cardId
+      );
+      const payload: any = {};
+      if (typeof updates.front === "string")
+        payload.front = updates.front.trim();
+      if (typeof updates.back === "string") payload.back = updates.back.trim();
+      if (Object.keys(payload).length === 0) return;
+      await updateDoc(cRef, payload);
+      setCards((prev) =>
+        prev.map((c) => (c.id === cardId ? { ...c, ...payload } : c))
+      );
+    },
+    [user, workspaceId, topicId]
+  );
+
+  const deleteCard = useCallback(
+    async (cardId: string) => {
+      if (!user || !workspaceId || !topicId || !cardId) return;
+      await deleteDoc(
+        doc(
+          db,
+          "users",
+          user.uid,
+          "workspaces",
+          workspaceId,
+          "topics",
+          topicId,
+          "cards",
+          cardId
+        )
+      );
+      setCards((prev) => prev.filter((c) => c.id !== cardId));
+    },
+    [user, workspaceId, topicId]
+  );
+
+  return { cards, loading, error, refetch, addCard, updateCard, deleteCard };
 }

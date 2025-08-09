@@ -8,11 +8,16 @@ import {
   serverTimestamp,
   doc,
   updateDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useUser } from "./useUser";
 import type { Topic } from "../types/models";
 
+/**
+ * Хук для тем внутри выбранного workspace.
+ * CRUD: load, add, updateName, updateProgress, delete (с удалением cards).
+ */
 export function useTopics(workspaceId: string | null) {
   const { user } = useUser();
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -46,7 +51,7 @@ export function useTopics(workspaceId: string | null) {
   }, [user, workspaceId]);
 
   useEffect(() => {
-    setTopics([]); // reset on workspace change
+    setTopics([]);
     void refetch();
   }, [refetch]);
 
@@ -70,10 +75,10 @@ export function useTopics(workspaceId: string | null) {
     [user, workspaceId]
   );
 
-  const updateTopicProgress = useCallback(
-    async (topicId: string, percent: number) => {
-      if (!user || !workspaceId) return;
-      const topicRef = doc(
+  const updateTopicName = useCallback(
+    async (topicId: string, name: string) => {
+      if (!user || !workspaceId || !topicId || !name.trim()) return;
+      const tRef = doc(
         db,
         "users",
         user.uid,
@@ -82,11 +87,30 @@ export function useTopics(workspaceId: string | null) {
         "topics",
         topicId
       );
-      await updateDoc(topicRef, {
+      await updateDoc(tRef, { name: name.trim() });
+      setTopics((prev) =>
+        prev.map((t) => (t.id === topicId ? { ...t, name: name.trim() } : t))
+      );
+    },
+    [user, workspaceId]
+  );
+
+  const updateTopicProgress = useCallback(
+    async (topicId: string, percent: number) => {
+      if (!user || !workspaceId || !topicId) return;
+      const tRef = doc(
+        db,
+        "users",
+        user.uid,
+        "workspaces",
+        workspaceId,
+        "topics",
+        topicId
+      );
+      await updateDoc(tRef, {
         progress: percent,
         lastTrained: serverTimestamp(),
       });
-      // optimistic update
       setTopics((prev) =>
         prev.map((t) => (t.id === topicId ? { ...t, progress: percent } : t))
       );
@@ -94,5 +118,41 @@ export function useTopics(workspaceId: string | null) {
     [user, workspaceId]
   );
 
-  return { topics, loading, error, addTopic, updateTopicProgress, refetch };
+  /**
+   * Удаление темы + всех её карточек.
+   */
+  const deleteTopic = useCallback(
+    async (topicId: string) => {
+      if (!user || !workspaceId || !topicId) return;
+      const cardsSnap = await getDocs(
+        collection(
+          db,
+          "users",
+          user.uid,
+          "workspaces",
+          workspaceId,
+          "topics",
+          topicId,
+          "cards"
+        )
+      );
+      await Promise.all(cardsSnap.docs.map((c) => deleteDoc(c.ref)));
+      await deleteDoc(
+        doc(db, "users", user.uid, "workspaces", workspaceId, "topics", topicId)
+      );
+      setTopics((prev) => prev.filter((t) => t.id !== topicId));
+    },
+    [user, workspaceId]
+  );
+
+  return {
+    topics,
+    loading,
+    error,
+    refetch,
+    addTopic,
+    updateTopicName,
+    updateTopicProgress,
+    deleteTopic,
+  };
 }

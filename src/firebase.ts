@@ -1,16 +1,40 @@
-// src/firebase.ts
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
+// В Vite все env читаем через import.meta.env.*
+// Оборачиваем в небольшую проверку, чтобы ловить опечатки.
+function required(name: string, value: string | undefined) {
+  if (!value) throw new Error(`Missing env var: ${name}`);
+  return value;
+}
+
 const firebaseConfig = {
-  apiKey: "AIzaSyCrqkjbf3G72XMT5zahbSc4w2CQDDQ1ScQ",
-  authDomain: "flashcards-learning-app-d6270.firebaseapp.com",
-  projectId: "flashcards-learning-app-d6270",
-  storageBucket: "flashcards-learning-app-d6270.firebasestorage.app",
-  messagingSenderId: "1071481356924",
-  appId: "1:1071481356924:web:c2b996c49bcc351ffe7ff9",
-  measurementId: "G-P6EQMHKKVY",
+  apiKey: required(
+    "VITE_FIREBASE_API_KEY",
+    import.meta.env.VITE_FIREBASE_API_KEY
+  ),
+  authDomain: required(
+    "VITE_FIREBASE_AUTH_DOMAIN",
+    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN
+  ),
+  projectId: required(
+    "VITE_FIREBASE_PROJECT_ID",
+    import.meta.env.VITE_FIREBASE_PROJECT_ID
+  ),
+  storageBucket: required(
+    "VITE_FIREBASE_STORAGE_BUCKET",
+    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET
+  ),
+  messagingSenderId: required(
+    "VITE_FIREBASE_MESSAGING_SENDER_ID",
+    import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID
+  ),
+  appId: required("VITE_FIREBASE_APP_ID", import.meta.env.VITE_FIREBASE_APP_ID),
+  // measurementId не обязателен для работы
+  ...(import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+    ? { measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID }
+    : {}),
 };
 
 const app = initializeApp(firebaseConfig);
