@@ -41,16 +41,19 @@ export function useCards(workspaceId: string | null, topicId: string | null) {
       );
       const snap = await getDocs(q);
       setCards(
-        snap.docs.map((d) => ({
-          id: d.id,
-          front: d.data().front,
-          back: d.data().back,
-          createdAt: d.data().createdAt,
-          lastResult: d.data().lastResult,
-          seenCount: d.data().seenCount ?? 0,
-          knownCount: d.data().knownCount ?? 0,
-          lastAnsweredAt: d.data().lastAnsweredAt,
-        }))
+        snap.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            front: data.front,
+            back: data.back,
+            createdAt: data.createdAt,
+            lastResult: data.lastResult ?? undefined, // null -> undefined
+            seenCount: data.seenCount ?? 0,
+            knownCount: data.knownCount ?? 0,
+            lastAnsweredAt: data.lastAnsweredAt ?? undefined,
+          };
+        })
       );
     } catch (e: any) {
       setError(e.message ?? "Failed to load cards");
@@ -68,6 +71,7 @@ export function useCards(workspaceId: string | null, topicId: string | null) {
     async (front: string, back: string) => {
       if (!user || !workspaceId || !topicId || !front.trim() || !back.trim())
         return;
+
       const col = collection(
         db,
         "users",
@@ -78,22 +82,22 @@ export function useCards(workspaceId: string | null, topicId: string | null) {
         topicId,
         "cards"
       );
+
+      // Не пишем lastResult/lastAnsweredAt вообще
       const docRef = await addDoc(col, {
         front: front.trim(),
         back: back.trim(),
         createdAt: serverTimestamp(),
-        lastResult: null,
         seenCount: 0,
         knownCount: 0,
-        lastAnsweredAt: null,
       });
+
       setCards((prev) => [
         ...prev,
         {
-          id: docRef.id,
+          id: docRef.id, // <-- важно: id, НЕ _id
           front: front.trim(),
           back: back.trim(),
-          lastResult: null,
           seenCount: 0,
           knownCount: 0,
         },

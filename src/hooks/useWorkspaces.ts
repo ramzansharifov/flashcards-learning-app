@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   collection,
-  addDoc,
-  getDocs,
   query,
   orderBy,
+  getDocs,
+  addDoc,
   serverTimestamp,
+  doc,
+  updateDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useUser } from "./useUser";
-import type { Workspace } from "../types/models";
+
+export type Workspace = { id: string; name: string; createdAt?: any };
 
 export function useWorkspaces() {
   const { user } = useUser();
@@ -53,11 +57,42 @@ export function useWorkspaces() {
         name: name.trim(),
         createdAt: serverTimestamp(),
       });
-      // optimistic update
       setWorkspaces((prev) => [...prev, { id: docRef.id, name: name.trim() }]);
     },
     [user]
   );
 
-  return { workspaces, loading, error, addWorkspace, refetch };
+  const updateWorkspaceName = useCallback(
+    async (workspaceId: string, name: string) => {
+      if (!user || !workspaceId || !name.trim()) return;
+      const ref = doc(db, "users", user.uid, "workspaces", workspaceId);
+      await updateDoc(ref, { name: name.trim() });
+      setWorkspaces((prev) =>
+        prev.map((w) =>
+          w.id === workspaceId ? { ...w, name: name.trim() } : w
+        )
+      );
+    },
+    [user]
+  );
+
+  const deleteWorkspace = useCallback(
+    async (workspaceId: string) => {
+      if (!user || !workspaceId) return;
+      // простой вариант без каскада (если нужен каскад — скажи, добавим)
+      await deleteDoc(doc(db, "users", user.uid, "workspaces", workspaceId));
+      setWorkspaces((prev) => prev.filter((w) => w.id !== workspaceId));
+    },
+    [user]
+  );
+
+  return {
+    workspaces,
+    loading,
+    error,
+    refetch,
+    addWorkspace,
+    updateWorkspaceName,
+    deleteWorkspace,
+  };
 }

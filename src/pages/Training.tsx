@@ -47,7 +47,9 @@ export default function Training() {
 
     const handleStart = () => {
         if (!selectedWorkspaceId || !selectedTopicId) return;
-        let ids = onlyUnknown ? cards.filter(c => c.lastResult === "dontKnow").map(c => c.id) : allIds;
+        const ids = onlyUnknown
+            ? cards.filter(c => c.lastResult === "dontKnow").map(c => c.id)
+            : allIds;
         if (shuffle) fisherYates(ids);
         lastAnswerByCard.current = {};
         actionStack.current = [];

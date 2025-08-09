@@ -1,8 +1,8 @@
+// src/pages/Dashboard.tsx
 import { useState } from "react";
 import { useWorkspaces } from "../hooks/useWorkspaces";
 import { useTopics } from "../hooks/useTopics";
 import { useCards } from "../hooks/useCards";
-
 import WorkspaceList from "../components/dashboard/workspace/WorkspaceList";
 import TopicList from "../components/dashboard/topic/TopicList";
 import CardList from "../components/dashboard/crds/CardList";
@@ -16,22 +16,64 @@ export default function Dashboard() {
     const [front, setFront] = useState("");
     const [back, setBack] = useState("");
 
-    const { workspaces, addWorkspace, updateWorkspaceName, deleteWorkspace } = useWorkspaces();
-    const { topics, addTopic, updateTopicName, deleteTopic } = useTopics(selectedWorkspaceId);
-    const { cards, addCard, updateCard, deleteCard } = useCards(selectedWorkspaceId, selectedTopicId);
+    const {
+        workspaces, loading: wsLoading, error: wsError,
+        addWorkspace, updateWorkspaceName, deleteWorkspace
+    } = useWorkspaces();
+
+    const {
+        topics, loading: tLoading, error: tError,
+        addTopic, updateTopicName, deleteTopic
+    } = useTopics(selectedWorkspaceId);
+
+    const {
+        cards,
+        loading: cLoading,
+        error: cError,
+        addCard,
+        updateCard,
+        deleteCard,
+    } = useCards(selectedWorkspaceId, selectedTopicId);
+
+    const handleAddWorkspace = async () => {
+        if (!wsName.trim()) return;
+        await addWorkspace(wsName);
+        setWsName("");
+    };
+
+    const handleAddTopic = async () => {
+        if (!topicName.trim()) return;
+        await addTopic(topicName);
+        setTopicName("");
+    };
+
+    const handleAddCard = async () => {
+        if (!front.trim() || !back.trim()) return;
+        await addCard(front, back);
+        setFront("");
+        setBack("");
+    };
 
     return (
-        <div className="p-4 max-w-2xl mx-auto space-y-6">
+        <div className="p-4 max-w-3xl mx-auto space-y-6">
+            {(wsLoading || tLoading || cLoading) && (
+                <div className="text-sm text-gray-500">Loading...</div>
+            )}
+            {(wsError || tError || cError) && (
+                <div className="text-sm text-red-600">
+                    {wsError || tError || cError}
+                </div>
+            )}
+
             {selectedWorkspaceId === null ? (
                 <WorkspaceList
                     workspaces={workspaces}
                     newName={wsName}
                     onNameChange={setWsName}
-                    onAdd={async () => { await addWorkspace(wsName); setWsName(""); }}
+                    onAdd={handleAddWorkspace}
                     onSelect={setSelectedWorkspaceId}
                     onRename={updateWorkspaceName}
                     onDelete={async (id) => {
-                        // если удаляем выбранный — сброс
                         if (selectedWorkspaceId === id) setSelectedWorkspaceId(null);
                         await deleteWorkspace(id);
                     }}
@@ -41,7 +83,7 @@ export default function Dashboard() {
                     topics={topics}
                     newName={topicName}
                     onNameChange={setTopicName}
-                    onAdd={async () => { await addTopic(topicName); setTopicName(""); }}
+                    onAdd={handleAddTopic}
                     onSelect={setSelectedTopicId}
                     onRename={updateTopicName}
                     onDelete={async (id) => {
@@ -57,11 +99,14 @@ export default function Dashboard() {
                     back={back}
                     onFrontChange={setFront}
                     onBackChange={setBack}
-                    onAdd={async () => { await addCard(front, back); setFront(""); setBack(""); }}
+                    onAdd={handleAddCard}
                     onUpdate={updateCard}
                     onDelete={deleteCard}
                     onBackTopics={() => setSelectedTopicId(null)}
-                    onBackWorkspaces={() => { setSelectedTopicId(null); setSelectedWorkspaceId(null); }}
+                    onBackWorkspaces={() => {
+                        setSelectedTopicId(null);
+                        setSelectedWorkspaceId(null);
+                    }}
                 />
             )}
         </div>

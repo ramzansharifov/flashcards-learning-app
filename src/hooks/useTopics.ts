@@ -1,17 +1,25 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   collection,
-  addDoc,
-  getDocs,
   query,
   orderBy,
+  getDocs,
+  addDoc,
   serverTimestamp,
   doc,
   updateDoc,
+  deleteDoc,
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../firebase"; // проверь путь
 import { useUser } from "./useUser";
-import type { Topic } from "../types/models";
+
+export type Topic = {
+  id: string;
+  name: string;
+  createdAt?: any;
+  progress?: number;
+  lastTrained?: any;
+};
 
 export function useTopics(workspaceId: string | null) {
   const { user } = useUser();
@@ -46,7 +54,7 @@ export function useTopics(workspaceId: string | null) {
   }, [user, workspaceId]);
 
   useEffect(() => {
-    setTopics([]); // reset on workspace change
+    setTopics([]);
     void refetch();
   }, [refetch]);
 
@@ -70,10 +78,10 @@ export function useTopics(workspaceId: string | null) {
     [user, workspaceId]
   );
 
-  const updateTopicProgress = useCallback(
-    async (topicId: string, percent: number) => {
-      if (!user || !workspaceId) return;
-      const topicRef = doc(
+  const updateTopicName = useCallback(
+    async (topicId: string, name: string) => {
+      if (!user || !workspaceId || !topicId || !name.trim()) return;
+      const ref = doc(
         db,
         "users",
         user.uid,
@@ -82,11 +90,41 @@ export function useTopics(workspaceId: string | null) {
         "topics",
         topicId
       );
-      await updateDoc(topicRef, {
+      await updateDoc(ref, { name: name.trim() });
+      setTopics((prev) =>
+        prev.map((t) => (t.id === topicId ? { ...t, name: name.trim() } : t))
+      );
+    },
+    [user, workspaceId]
+  );
+
+  const deleteTopic = useCallback(
+    async (topicId: string) => {
+      if (!user || !workspaceId || !topicId) return;
+      await deleteDoc(
+        doc(db, "users", user.uid, "workspaces", workspaceId, "topics", topicId)
+      );
+      setTopics((prev) => prev.filter((t) => t.id !== topicId));
+    },
+    [user, workspaceId]
+  );
+
+  const updateTopicProgress = useCallback(
+    async (topicId: string, percent: number) => {
+      if (!user || !workspaceId || !topicId) return;
+      const ref = doc(
+        db,
+        "users",
+        user.uid,
+        "workspaces",
+        workspaceId,
+        "topics",
+        topicId
+      );
+      await updateDoc(ref, {
         progress: percent,
         lastTrained: serverTimestamp(),
       });
-      // optimistic update
       setTopics((prev) =>
         prev.map((t) => (t.id === topicId ? { ...t, progress: percent } : t))
       );
@@ -94,5 +132,14 @@ export function useTopics(workspaceId: string | null) {
     [user, workspaceId]
   );
 
-  return { topics, loading, error, addTopic, updateTopicProgress, refetch };
+  return {
+    topics,
+    loading,
+    error,
+    refetch,
+    addTopic,
+    updateTopicName,
+    deleteTopic,
+    updateTopicProgress,
+  };
 }

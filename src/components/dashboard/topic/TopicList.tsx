@@ -18,17 +18,10 @@ export default function TopicList({
 }: Props) {
     return (
         <>
-            <button className="text-sm text-blue-500 mb-2" onClick={onBack}>
-                ← Back to Workspaces
-            </button>
+            <button className="text-sm text-blue-500 mb-2" onClick={onBack}>← Back to Workspaces</button>
             <h2 className="text-2xl font-bold">Topics</h2>
             <div className="flex gap-2">
-                <input
-                    value={newName}
-                    onChange={(e) => onNameChange(e.target.value)}
-                    placeholder="New topic"
-                    className="input input-bordered flex-grow"
-                />
+                <input value={newName} onChange={(e) => onNameChange(e.target.value)} placeholder="New topic" className="input input-bordered flex-grow" />
                 <button onClick={onAdd} className="btn btn-primary">Add</button>
             </div>
 
