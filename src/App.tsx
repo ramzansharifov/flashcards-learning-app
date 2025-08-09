@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Training from "./pages/Training";
 
 function App() {
   return (
@@ -24,7 +25,14 @@ function App() {
           {/* Аутентификация */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-
+          <Route
+            path="/training"
+            element={
+              <ProtectedRoute>
+                <Training />
+              </ProtectedRoute>
+            }
+          />
           {/* Можно добавить 404 */}
           <Route path="*" element={<div>Page not found</div>} />
         </Routes>
