@@ -4,11 +4,14 @@ import Modal from "../../ui/Modal";
 import ConfirmDialog from "../../ui/ConfirmDialog";
 import CardForm from "../../forms/CardForm";
 import CardsJsonForm from "../../forms/CardsJsonForm";
+import SkeletonList from "../../../ui/SkeletonList";
+import { useSearch } from "../../../hooks/useSearch";
 
 type Card = { id: string; front: string; back: string };
 
 type Props = {
     cards: Card[];
+    loading?: boolean;
     onAdd: (front: string, back: string) => void | Promise<void>;
     onAddBulk: (items: { front: string; back: string }[]) => void | Promise<void>;
     onUpdate: (id: string, updates: { front?: string; back?: string }) => void | Promise<void>;
@@ -18,12 +21,13 @@ type Props = {
 };
 
 export default function CardList({
-    cards, onAdd, onAddBulk, onUpdate, onDelete, onBackTopics, onBackWorkspaces
+    cards, loading, onAdd, onAddBulk, onUpdate, onDelete, onBackTopics, onBackWorkspaces
 }: Props) {
     const [addOpen, setAddOpen] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<{ id: string; front: string; back: string } | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+    const { q, setQ, match, isActive } = useSearch();
 
     return (
         <>
@@ -34,24 +38,34 @@ export default function CardList({
 
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold">Flashcards</h2>
+                <input
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder="Search..."
+                    className="input input-bordered input-sm"
+                />
                 <div className="flex items-center gap-3">
                     <button className="text-sm text-blue-600" onClick={() => setImportOpen(true)}>Import JSON</button>
                     <button className="text-sm text-blue-600" onClick={() => setAddOpen(true)}>Add</button>
                 </div>
             </div>
 
-            <ul className="mt-4 space-y-2">
-                {cards.map(c => (
-                    <CardItem
-                        key={c.id}
-                        id={c.id}
-                        front={c.front}
-                        back={c.back}
-                        onEdit={(id, front, back) => setEditTarget({ id, front, back })}
-                        onDelete={(id) => setConfirmDeleteId(id)}
-                    />
-                ))}
-            </ul>
+            {loading ? (
+                <SkeletonList rows={8} />
+            ) : (
+                <ul className="mt-4 space-y-2">
+                    {(isActive ? cards.filter(c => match(c.front) || match(c.back)) : cards).map(c => (
+                        <CardItem
+                            key={c.id}
+                            id={c.id}
+                            front={c.front}
+                            back={c.back}
+                            onEdit={(id, front, back) => setEditTarget({ id, front, back })}
+                            onDelete={(id) => setConfirmDeleteId(id)}
+                        />
+                    ))}
+                </ul>
+            )}
 
             <Modal open={addOpen} title="New card" onClose={() => setAddOpen(false)} footer={null}>
                 <CardForm

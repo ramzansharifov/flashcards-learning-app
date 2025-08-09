@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCards } from "../../hooks/useCards";
 import { useTopics } from "../../hooks/useTopics";
+import { notify } from "../../lib/notify";
 
 type Answer = "know" | "dontKnow";
 
@@ -17,6 +18,10 @@ export default function TrainingRun() {
     const [onlyUnknown, setOnlyUnknown] = useState(false);
 
     const allIds = useMemo(() => cards.map(c => c.id), [cards]);
+    const eligibleCount = useMemo(
+        () => (onlyUnknown ? cards.filter(c => c.lastResult === "dontKnow").length : cards.length),
+        [cards, onlyUnknown]
+    );
 
     const [queue, setQueue] = useState<string[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -32,6 +37,10 @@ export default function TrainingRun() {
 
     const start = () => {
         const ids = onlyUnknown ? cards.filter(c => c.lastResult === "dontKnow").map(c => c.id) : allIds;
+        if (ids.length === 0) {
+            notify.err(onlyUnknown ? "No unknown cards from last time." : "This topic has no cards.");
+            return;
+        }
         const arr = [...ids];
         if (shuffle) fisherYates(arr);
         lastAnswerByCard.current = {};
@@ -63,7 +72,6 @@ export default function TrainingRun() {
         }, 0);
         const percent = cards.length ? Math.round((knownNow / cards.length) * 100) : 0;
         if (topicId) await updateTopicProgress(topicId, percent);
-
         navigate(`/training/${wsId}/${topicId}/results`, { state: { known: knownNow, total: cards.length, percent } });
     };
 
@@ -90,7 +98,11 @@ export default function TrainingRun() {
                             <input type="checkbox" checked={onlyUnknown} onChange={(e) => setOnlyUnknown(e.target.checked)} />
                             <span>Only unknown from last time</span>
                         </label>
-                        <button className="btn btn-primary" onClick={start} disabled={!cards.length}>Start</button>
+
+                        <div className="text-sm text-gray-600">
+                            Eligible cards: <b>{eligibleCount}</b>
+                        </div>
+                        <button className="btn btn-primary" onClick={start} disabled={eligibleCount === 0}>Start</button>
                     </div>
                 </>
             )}

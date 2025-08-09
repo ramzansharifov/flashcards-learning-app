@@ -3,23 +3,27 @@ import TopicItem from "./TopicItem";
 import Modal from "../../ui/Modal";
 import ConfirmDialog from "../../ui/ConfirmDialog";
 import TopicForm from "../../forms/TopicForm";
+import SkeletonList from "../../../ui/SkeletonList";
+import { useSearch } from "../../../hooks/useSearch";
 
 type Topic = { id: string; name: string };
 
 type Props = {
     topics: Topic[];
+    loading?: boolean;
     onSelect: (id: string) => void;
     onAdd: (name: string) => void | Promise<void>;
     onRename: (id: string, newName: string) => void | Promise<void>;
     onDelete: (id: string) => void | Promise<void>;
     onBack: () => void;
-    onTrain: (id: string) => void; // NEW
+    onTrain: (id: string) => void;
 };
 
-export default function TopicList({ topics, onSelect, onAdd, onRename, onDelete, onBack, onTrain }: Props) {
+export default function TopicList({ topics, loading, onSelect, onAdd, onRename, onDelete, onBack, onTrain }: Props) {
     const [addOpen, setAddOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<{ id: string; name: string } | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+    const { q, setQ, match, isActive } = useSearch();
 
     return (
         <>
@@ -27,24 +31,34 @@ export default function TopicList({ topics, onSelect, onAdd, onRename, onDelete,
 
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold">Topics</h2>
+                <input
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder="Search..."
+                    className="input input-bordered input-sm"
+                />
                 <button className="text-sm text-blue-600" onClick={() => setAddOpen(true)}>Add</button>
             </div>
 
-            <ul className="mt-4 space-y-2">
-                {topics.map(t => (
-                    <TopicItem
-                        key={t.id}
-                        id={t.id}
-                        name={t.name}
-                        cardsCount={(t as any).cardsCount ?? 0}
-                        knownCount={(t as any).knownCount ?? 0}
-                        onSelect={onSelect}
-                        onEdit={(id, name) => setEditTarget({ id, name })}
-                        onDelete={(id) => setConfirmDeleteId(id)}
-                        onTrain={onTrain}
-                    />
-                ))}
-            </ul>
+            {loading ? (
+                <SkeletonList rows={6} />
+            ) : (
+                <ul className="mt-4 space-y-2">
+                    {(isActive ? topics.filter(t => match(t.name)) : topics).map(t => (
+                        <TopicItem
+                            key={t.id}
+                            id={t.id}
+                            name={t.name}
+                            cardsCount={(t as any).cardsCount ?? 0}
+                            knownCount={(t as any).knownCount ?? 0}
+                            onSelect={onSelect}
+                            onEdit={(id, name) => setEditTarget({ id, name })}
+                            onDelete={(id) => setConfirmDeleteId(id)}
+                            onTrain={onTrain}
+                        />
+                    ))}
+                </ul>
+            )}
 
             <Modal open={addOpen} title="New topic" onClose={() => setAddOpen(false)} footer={null}>
                 <TopicForm submitLabel="Create" onSubmit={async (name) => { if (!name) return; await onAdd(name); setAddOpen(false); }} />

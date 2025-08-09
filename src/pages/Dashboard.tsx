@@ -1,4 +1,3 @@
-// src/pages/Dashboard.tsx
 import { useState } from "react";
 import { useWorkspaces } from "../hooks/useWorkspaces";
 import { useTopics } from "../hooks/useTopics";
@@ -46,6 +45,7 @@ export default function Dashboard() {
 
             {selectedWorkspaceId === null ? (
                 <WorkspaceList
+                    loading={wsLoading}
                     workspaces={workspaces}
                     onSelect={setSelectedWorkspaceId}
                     onAdd={addWorkspace}
@@ -57,6 +57,7 @@ export default function Dashboard() {
                 />
             ) : selectedTopicId === null ? (
                 <TopicList
+                    loading={tLoading}
                     topics={topics}
                     onSelect={setSelectedTopicId}
                     onAdd={addTopic}
@@ -70,6 +71,7 @@ export default function Dashboard() {
                 />
             ) : (
                 <CardList
+                    loading={cLoading}
                     cards={cards}
                     onAdd={addCard}
                     onUpdate={updateCard}
