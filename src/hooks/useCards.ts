@@ -6,6 +6,10 @@ import {
   query,
   orderBy,
   serverTimestamp,
+  doc,
+  updateDoc,
+  deleteDoc,
+  increment,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useUser } from "./useUser";
@@ -42,6 +46,10 @@ export function useCards(workspaceId: string | null, topicId: string | null) {
           front: d.data().front,
           back: d.data().back,
           createdAt: d.data().createdAt,
+          lastResult: d.data().lastResult,
+          seenCount: d.data().seenCount ?? 0,
+          knownCount: d.data().knownCount ?? 0,
+          lastAnsweredAt: d.data().lastAnsweredAt,
         }))
       );
     } catch (e: any) {
@@ -52,7 +60,7 @@ export function useCards(workspaceId: string | null, topicId: string | null) {
   }, [user, workspaceId, topicId]);
 
   useEffect(() => {
-    setCards([]); // reset on selection change
+    setCards([]);
     void refetch();
   }, [refetch]);
 
@@ -74,14 +82,118 @@ export function useCards(workspaceId: string | null, topicId: string | null) {
         front: front.trim(),
         back: back.trim(),
         createdAt: serverTimestamp(),
+        lastResult: null,
+        seenCount: 0,
+        knownCount: 0,
+        lastAnsweredAt: null,
       });
       setCards((prev) => [
         ...prev,
-        { id: docRef.id, front: front.trim(), back: back.trim() },
+        {
+          id: docRef.id,
+          front: front.trim(),
+          back: back.trim(),
+          lastResult: null,
+          seenCount: 0,
+          knownCount: 0,
+        },
       ]);
     },
     [user, workspaceId, topicId]
   );
 
-  return { cards, loading, error, addCard, refetch };
+  const updateCard = useCallback(
+    async (cardId: string, updates: Partial<Pick<Card, "front" | "back">>) => {
+      if (!user || !workspaceId || !topicId || !cardId) return;
+      const cRef = doc(
+        db,
+        "users",
+        user.uid,
+        "workspaces",
+        workspaceId,
+        "topics",
+        topicId,
+        "cards",
+        cardId
+      );
+      const payload: any = {};
+      if (typeof updates.front === "string")
+        payload.front = updates.front.trim();
+      if (typeof updates.back === "string") payload.back = updates.back.trim();
+      if (Object.keys(payload).length === 0) return;
+      await updateDoc(cRef, payload);
+      setCards((prev) =>
+        prev.map((c) => (c.id === cardId ? { ...c, ...payload } : c))
+      );
+    },
+    [user, workspaceId, topicId]
+  );
+
+  const deleteCard = useCallback(
+    async (cardId: string) => {
+      if (!user || !workspaceId || !topicId || !cardId) return;
+      await deleteDoc(
+        doc(
+          db,
+          "users",
+          user.uid,
+          "workspaces",
+          workspaceId,
+          "topics",
+          topicId,
+          "cards",
+          cardId
+        )
+      );
+      setCards((prev) => prev.filter((c) => c.id !== cardId));
+    },
+    [user, workspaceId, topicId]
+  );
+
+  const setCardResult = useCallback(
+    async (cardId: string, result: "know" | "dontKnow") => {
+      if (!user || !workspaceId || !topicId || !cardId) return;
+      const cRef = doc(
+        db,
+        "users",
+        user.uid,
+        "workspaces",
+        workspaceId,
+        "topics",
+        topicId,
+        "cards",
+        cardId
+      );
+      await updateDoc(cRef, {
+        lastResult: result,
+        lastAnsweredAt: serverTimestamp(),
+        seenCount: increment(1),
+        knownCount: result === "know" ? increment(1) : increment(0),
+      });
+      setCards((prev) =>
+        prev.map((c) =>
+          c.id === cardId
+            ? {
+                ...c,
+                lastResult: result,
+                seenCount: (c.seenCount ?? 0) + 1,
+                knownCount: (c.knownCount ?? 0) + (result === "know" ? 1 : 0),
+              }
+            : c
+        )
+      );
+    },
+    [user, workspaceId, topicId]
+  );
+
+  return {
+    cards,
+    loading,
+    error,
+    refetch,
+    addCard,
+    updateCard,
+    deleteCard,
+    setCardResult,
+  };
 }

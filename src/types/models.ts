@@ -17,4 +17,8 @@ export type Card = {
   front: string;
   back: string;
   createdAt?: any;
+  lastResult?: "know" | "dontKnow";
+  seenCount?: number;
+  knownCount?: number;
+  lastAnsweredAt?: any;
 };
