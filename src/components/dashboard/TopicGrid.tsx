@@ -31,19 +31,19 @@ export default function TopicGrid({
 
     return (
         <section>
-            <div className="flex items-center justify-between">
-                <div>
+            <div className="flex-col">
+                <div className="flex items-center justify-between">
                     <h2 className="text-xl font-bold">Topics</h2>
-                    <p className="mt-1 text-sm text-[#212529]/70">
-                        Select a topic to view the cards, or create a new one.
-                    </p>
+                    <button
+                        className="rounded-lg cursor-pointer bg-[#4F46E5] px-3 py-2 text-sm font-semibold text-white hover:opacity-95 active:opacity-90"
+                        onClick={onAdd}
+                    >
+                        New Topic
+                    </button>
                 </div>
-                <button
-                    className="rounded-lg cursor-pointer bg-[#4F46E5] px-3 py-2 text-sm font-semibold text-white hover:opacity-95 active:opacity-90"
-                    onClick={onAdd}
-                >
-                    New Topic
-                </button>
+                <p className="mt-1 text-sm text-[#212529]/70">
+                    Select a topic to view the cards, or create a new one.
+                </p>
             </div>
 
             {/* Поле поиска */}
