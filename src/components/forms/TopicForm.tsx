@@ -1,4 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { InputField } from "../ui/InputField";
 
 type Props = {
     initialName?: string;
@@ -6,42 +10,51 @@ type Props = {
     submitLabel?: string;
 };
 
-export default function TopicForm({ initialName = "", onSubmit, submitLabel = "Save" }: Props) {
-    const [name, setName] = useState(initialName);
-    const [touched, setTouched] = useState(false);
-    const [submitAttempted, setSubmitAttempted] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
+const schema = z.object({
+    name: z.string().trim().min(1, "Name is required"),
+});
+type Values = z.infer<typeof schema>;
 
-    useEffect(() => { setName(initialName); }, [initialName]);
+export default function TopicForm({
+    initialName = "",
+    onSubmit,
+    submitLabel = "Save",
+}: Props) {
+    const {
+        register,
+        handleSubmit,
+        reset,
+        formState: { errors, isSubmitting },
+    } = useForm<Values>({
+        resolver: zodResolver(schema),
+        defaultValues: { name: initialName },
+        mode: "onBlur",
+    });
 
-    const valid = name.trim().length >= 1;
-    const showError = (touched || submitAttempted) && !valid;
-    const errorText = showError ? "Name is required" : "";
+    useEffect(() => {
+        reset({ name: initialName });
+    }, [initialName, reset]);
+
+    const submit = async (data: Values) => {
+        await onSubmit(data.name.trim());
+    };
 
     return (
-        <form
-            onSubmit={async (e) => {
-                e.preventDefault();
-                setSubmitAttempted(true);
-                if (!valid) return;
-                setSubmitting(true);
-                await onSubmit(name.trim());
-                setSubmitting(false);
-            }}
-            className="space-y-3"
-        >
-            <input
-                autoFocus
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onBlur={() => setTouched(true)}
-                placeholder="Topic name"
-                className={`input input-bordered w-full ${showError ? "input-error" : ""}`}
-                aria-invalid={showError}
+        <form onSubmit={handleSubmit(submit)} className="space-y-3">
+            <InputField
+                id="topic-name"
+                label="Topic name"
+                placeholder="Enter name"
+                {...register("name")}
+                error={errors.name?.message}
             />
-            {showError && <p className="text-sm text-red-600">{errorText}</p>}
-            <button className="btn btn-primary w-full" type="submit" disabled={submitting}>
-                {submitting ? "Saving..." : submitLabel}
+            <button
+                className="inline-flex cursor-pointer w-full items-center justify-center rounded-xl bg-[#4F46E5] px-5 py-3 text-base font-semibold text-white shadow-sm hover:opacity-95 active:opacity-90 disabled:opacity-60"
+                type="submit"
+                disabled={isSubmitting}
+                aria-busy={isSubmitting}
+            >
+                {isSubmitting ? "Saving..." : submitLabel}
             </button>
         </form>
     );

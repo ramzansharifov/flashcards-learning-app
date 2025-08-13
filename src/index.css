@@ -1,1 +1,13 @@
 @import "tailwindcss";
+
+/* Для WebKit браузеров (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+/* Для Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d2d2d2 #f8f9fa;
+}

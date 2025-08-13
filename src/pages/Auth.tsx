@@ -1,185 +1,195 @@
-import { useEffect, useMemo, useState } from "react";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebase";
+import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { auth } from "../firebase";
 import { notify } from "../lib/notify";
+import { InputField } from "../components/ui/InputField";
 
-const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+type Mode = "signin" | "signup";
 
-type Mode = "login" | "register";
+// ─── схемы валидации ────────────────────────────────────────────────────────────
+const signinSchema = z.object({
+    email: z.string().trim().email("Invalid email"),
+    password: z.string().min(6, "Min 6 characters"),
+});
+type SigninValues = z.infer<typeof signinSchema>;
+
+const registerSchema = z
+    .object({
+        email: z.string().trim().email("Invalid email"),
+        password: z.string().min(6, "Min 6 characters"),
+        confirm: z.string().min(6, "Min 6 characters"),
+    })
+    .refine((v) => v.password === v.confirm, {
+        message: "Passwords do not match",
+        path: ["confirm"],
+    });
+type RegisterValues = z.infer<typeof registerSchema>;
+
+// ─── сам компонент ──────────────────────────────────────────────────────────────
 export default function Auth({ initialTab }: { initialTab?: Mode }) {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const initial: Mode = useMemo(() => {
-        if (initialTab) return initialTab;
-        return location.pathname.includes("register") ? "register" : "login";
-    }, [location.pathname, initialTab]);
-
+    const initial: Mode = useMemo(
+        () => (initialTab ? initialTab : location.pathname.includes("signup") ? "signup" : "signin"),
+        [location.pathname, initialTab]
+    );
     const [mode, setMode] = useState<Mode>(initial);
 
-    // login form
-    const [lEmail, setLEmail] = useState("");
-    const [lPass, setLPass] = useState("");
-    const [lTouched, setLTouched] = useState({ email: false, pass: false });
-    const [lSubmitting, setLSubmitting] = useState(false);
+    // ── формы как внутренние функции ──────────────────────────────────────────────
+    function SigninForm() {
+        const { register, handleSubmit, formState: { errors, isSubmitting } } =
+            useForm<SigninValues>({ resolver: zodResolver(signinSchema), defaultValues: { email: "", password: "" } });
 
-    const lEmailErr = lTouched.email && (!lEmail.trim() ? "Email is required" : !emailRe.test(lEmail) ? "Invalid email" : "");
-    const lPassErr = lTouched.pass && (!lPass ? "Password is required" : lPass.length < 6 ? "Min 6 characters" : "");
-    const lValid = !lEmailErr && !lPassErr && lEmail && lPass;
+        const onSubmit = async (data: SigninValues) => {
+            try {
+                await signInWithEmailAndPassword(auth, data.email, data.password);
+                notify.ok("Signed in");
+                navigate("/dashboard");
+            } catch (e: any) {
+                notify.err(e.message);
+            }
+        };
 
-    // register form
-    const [rEmail, setREmail] = useState("");
-    const [rPass, setRPass] = useState("");
-    const [rConfirm, setRConfirm] = useState("");
-    const [rTouched, setRTouched] = useState({ email: false, pass: false, confirm: false });
-    const [rSubmitting, setRSubmitting] = useState(false);
+        return (
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <InputField
+                    id="signin-email"
+                    label="Email"
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    {...register("email")}
+                    error={errors.email?.message}
+                    type="email"
+                />
+                <InputField
+                    id="signin-pass"
+                    label="Password"
+                    placeholder="Minimum 6 characters"
+                    autoComplete="current-password"
+                    {...register("password")}
+                    error={errors.password?.message}
+                    type="password"
+                />
+                <button
+                    className="inline-flex w-full items-center justify-center rounded-xl bg-[#4F46E5] px-5 py-3 text-base font-semibold text-white shadow-sm hover:opacity-95 active:opacity-90 disabled:opacity-60"
+                    type="submit"
+                    disabled={isSubmitting}
+                    aria-busy={isSubmitting}
+                >
+                    {isSubmitting ? "Signing in..." : "Sign in"}
+                </button>
+                <p className="text-center text-sm">
+                    Don’t have an account?
+                    <button type="button" className="font-semibold text-[#4F46E5] hover:opacity-90" onClick={() => setMode("register")}>
+                        Sign up
+                    </button>
+                </p>
+            </form>
+        );
+    }
 
-    const rEmailErr = rTouched.email && (!rEmail.trim() ? "Email is required" : !emailRe.test(rEmail) ? "Invalid email" : "");
-    const rPassErr = rTouched.pass && (!rPass ? "Password is required" : rPass.length < 6 ? "Min 6 characters" : "");
-    const rConfirmErr = rTouched.confirm && (rConfirm !== rPass ? "Passwords do not match" : "");
-    const rValid = !rEmailErr && !rPassErr && !rConfirmErr && rEmail && rPass && rConfirm;
+    function RegisterForm() {
+        const { register, handleSubmit, formState: { errors, isSubmitting } } =
+            useForm<RegisterValues>({ resolver: zodResolver(registerSchema), defaultValues: { email: "", password: "", confirm: "" } });
 
-    useEffect(() => {
-        // сбрасываем ошибки при смене таба
-        setLTouched({ email: false, pass: false });
-        setRTouched({ email: false, pass: false, confirm: false });
-    }, [mode]);
+        const onSubmit = async (data: RegisterValues) => {
+            try {
+                await createUserWithEmailAndPassword(auth, data.email, data.password);
+                notify.ok("Account created");
+                navigate("/dashboard");
+            } catch (e: any) {
+                notify.err(e.message);
+            }
+        };
 
-    const doLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLTouched({ email: true, pass: true });
-        if (!lValid) return;
-        try {
-            setLSubmitting(true);
-            await signInWithEmailAndPassword(auth, lEmail.trim(), lPass);
-            notify.ok("Signed in");
-            navigate("/");
-        } catch (e: any) {
-            notify.err(e.message);
-        } finally {
-            setLSubmitting(false);
-        }
-    };
+        return (
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <InputField
+                    id="reg-email"
+                    label="Email"
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    {...register("email")}
+                    error={errors.email?.message}
+                    type="email"
+                />
+                <InputField
+                    id="reg-pass"
+                    label="Password"
+                    placeholder="Minimum 6 characters"
+                    autoComplete="new-password"
+                    {...register("password")}
+                    error={errors.password?.message}
+                    type="password"
+                />
+                <InputField
+                    id="reg-confirm"
+                    label="Confirm Password"
+                    placeholder="Repeat the password"
+                    autoComplete="new-password"
+                    {...register("confirm")}
+                    error={errors.confirm?.message}
+                    type="password"
+                />
+                <button
+                    className="inline-flex w-full items-center justify-center rounded-xl bg-[#4F46E5] px-5 py-3 text-base font-semibold text-white shadow-sm hover:opacity-95 active:opacity-90 disabled:opacity-60"
+                    type="submit"
+                    disabled={isSubmitting}
+                    aria-busy={isSubmitting}
+                >
+                    {isSubmitting ? "Creating..." : "Create account"}
+                </button>
+                <p className="text-center text-sm">
+                    Already have an account?
+                    <button type="button" className="font-semibold text-[#4F46E5] hover:opacity-90" onClick={() => setMode("signin")}>
+                        Sign In
+                    </button>
+                </p>
+            </form>
+        );
+    }
 
-    const doRegister = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setRTouched({ email: true, pass: true, confirm: true });
-        if (!rValid) return;
-        try {
-            setRSubmitting(true);
-            await createUserWithEmailAndPassword(auth, rEmail.trim(), rPass);
-            notify.ok("Account created");
-            navigate("/");
-        } catch (e: any) {
-            notify.err(e.message);
-        } finally {
-            setRSubmitting(false);
-        }
-    };
-
+    // ─── оболочка (дизайн как раньше) ─────────────────────────────────────────────
     return (
-        <div className="p-4 max-w-md mx-auto">
-            <h1 className="text-2xl font-bold mb-4">Welcome</h1>
+        <div className="px-4 py-10 sm:py-14">
+            <div className="mx-auto w-full max-w-md">
+                <div className="mb-6 text-center">
+                    <h1 className="text-3xl sm:text-4xl font-extrabold">Welcome!</h1>
+                    <p className="mt-2 text-sm sm:text-base text-[#212529]/70">
+                        Create flashcards, practice, and track your progress.
+                    </p>
+                </div>
 
-            <div className="mb-4 flex gap-2">
-                <button
-                    className={`btn btn-sm ${mode === "login" ? "btn-primary" : ""}`}
-                    onClick={() => setMode("login")}
-                >
-                    Login
-                </button>
-                <button
-                    className={`btn btn-sm ${mode === "register" ? "btn-primary" : ""}`}
-                    onClick={() => setMode("register")}
-                >
-                    Register
-                </button>
+                <div className="rounded-xl border border-[#212529]/10 bg-white p-4 sm:p-6 shadow-sm">
+                    <div role="tablist" aria-label="Auth tabs" className="mb-5 grid grid-cols-2 rounded-xl border border-[#212529]/10 bg-[#F8F9FA] p-1">
+                        <button
+                            role="tab"
+                            aria-selected={mode === "signin"}
+                            className={`rounded-lg px-4 py-2 text-sm font-semibold transition
+                ${mode === "signin" ? "bg-[#4F46E5] shadow-sm text-white" : "text-[#212529]/70 hover:text-[#212529]"}`}
+                            onClick={() => setMode("signin")}
+                        >
+                            Sign In
+                        </button>
+                        <button
+                            role="tab"
+                            aria-selected={mode === "signup"}
+                            className={`rounded-lg px-4 py-2 text-sm font-semibold transition
+                ${mode === "signup" ? "bg-[#4F46E5] shadow-sm text-white" : "text-[#212529]/70 hover:text-[#212529]"}`}
+                            onClick={() => setMode("signup")}
+                        >
+                            Sign Up
+                        </button>
+                    </div>
+
+                    {mode === "signin" ? <SigninForm /> : <RegisterForm />}
+                </div>
             </div>
-
-            {mode === "login" ? (
-                <form onSubmit={doLogin} className="space-y-3">
-                    <div>
-                        <input
-                            type="email"
-                            value={lEmail}
-                            onChange={(e) => setLEmail(e.target.value)}
-                            onBlur={() => setLTouched(s => ({ ...s, email: true }))}
-                            placeholder="Email"
-                            className={`input input-bordered w-full ${lEmailErr ? "input-error" : ""}`}
-                            aria-invalid={!!lEmailErr}
-                        />
-                        {lEmailErr && <p className="text-sm text-red-600 mt-1">{lEmailErr}</p>}
-                    </div>
-                    <div>
-                        <input
-                            type="password"
-                            value={lPass}
-                            onChange={(e) => setLPass(e.target.value)}
-                            onBlur={() => setLTouched(s => ({ ...s, pass: true }))}
-                            placeholder="Password (min 6)"
-                            className={`input input-bordered w-full ${lPassErr ? "input-error" : ""}`}
-                            aria-invalid={!!lPassErr}
-                        />
-                        {lPassErr && <p className="text-sm text-red-600 mt-1">{lPassErr}</p>}
-                    </div>
-                    <button className="btn btn-primary w-full" type="submit" disabled={lSubmitting}>
-                        {lSubmitting ? "Signing in..." : "Sign in"}
-                    </button>
-                    <p className="mt-3 text-sm">
-                        No account? <button type="button" className="text-blue-600" onClick={() => setMode("register")}>Register</button>
-                    </p>
-                </form>
-            ) : (
-                <form onSubmit={doRegister} className="space-y-3">
-                    <div>
-                        <input
-                            type="email"
-                            value={rEmail}
-                            onChange={(e) => setREmail(e.target.value)}
-                            onBlur={() => setRTouched(s => ({ ...s, email: true }))}
-                            placeholder="Email"
-                            className={`input input-bordered w-full ${rEmailErr ? "input-error" : ""}`}
-                            aria-invalid={!!rEmailErr}
-                        />
-                        {rEmailErr && <p className="text-sm text-red-600 mt-1">{rEmailErr}</p>}
-                    </div>
-                    <div>
-                        <input
-                            type="password"
-                            value={rPass}
-                            onChange={(e) => setRPass(e.target.value)}
-                            onBlur={() => setRTouched(s => ({ ...s, pass: true }))}
-                            placeholder="Password (min 6)"
-                            className={`input input-bordered w-full ${rPassErr ? "input-error" : ""}`}
-                            aria-invalid={!!rPassErr}
-                        />
-                        {rPassErr && <p className="text-sm text-red-600 mt-1">{rPassErr}</p>}
-                    </div>
-                    <div>
-                        <input
-                            type="password"
-                            value={rConfirm}
-                            onChange={(e) => setRConfirm(e.target.value)}
-                            onBlur={() => setRTouched(s => ({ ...s, confirm: true }))}
-                            placeholder="Confirm password"
-                            className={`input input-bordered w-full ${rConfirmErr ? "input-error" : ""}`}
-                            aria-invalid={!!rConfirmErr}
-                        />
-                        {rConfirmErr && <p className="text-sm text-red-600 mt-1">{rConfirmErr}</p>}
-                    </div>
-                    <button className="btn btn-primary w-full" type="submit" disabled={rSubmitting}>
-                        {rSubmitting ? "Creating..." : "Create account"}
-                    </button>
-                    <p className="mt-3 text-sm">
-                        Already have an account? <button type="button" className="text-blue-600" onClick={() => setMode("login")}>Login</button>
-                    </p>
-                </form>
-            )}
-
-            <p className="mt-6 text-xs text-gray-500">
-                By continuing you agree to the Terms and Privacy Policy.
-            </p>
         </div>
     );
 }

@@ -12,7 +12,7 @@ export default function ProtectedRoute({ children }: { children: ReactElement })
 
     // Если пользователь не авторизован — редирект на страницу входа
     if (!user) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/signin" replace />;
     }
     // Иначе рендерим переданный компонент
     return children;
