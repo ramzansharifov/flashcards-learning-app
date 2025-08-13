@@ -35,27 +35,28 @@ export default function CardGrid({
 
     return (
         <section>
-            <div className="flex items-center justify-between">
-                <div>
+            <div className="flex-col">
+                <div className="flex items-center justify-between">
                     <h2 className="text-xl font-bold">Cards</h2>
-                    <p className="mt-1 text-sm text-[#212529]/70">
-                        Click on a card to preview it. Use the icons to edit or delete
-                    </p>
+                    <div className="flex items-center gap-2">
+                        <button
+                            className="rounded-lg cursor-pointer border border-[#212529]/15 bg-white px-3 py-2 text-sm hover:bg-white/80"
+                            onClick={onImport}
+                        >
+                            Import JSON
+                        </button>
+                        <button
+                            className="rounded-lg cursor-pointer bg-[#4F46E5] px-3 py-2 text-sm font-semibold text-white hover:opacity-95 active:opacity-90"
+                            onClick={onAdd}
+                        >
+                            New Card
+                        </button>
+                    </div>
+
                 </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        className="rounded-lg cursor-pointer border border-[#212529]/15 bg-white px-3 py-2 text-sm hover:bg-white/80"
-                        onClick={onImport}
-                    >
-                        Import JSON
-                    </button>
-                    <button
-                        className="rounded-lg cursor-pointer bg-[#4F46E5] px-3 py-2 text-sm font-semibold text-white hover:opacity-95 active:opacity-90"
-                        onClick={onAdd}
-                    >
-                        New Card
-                    </button>
-                </div>
+                <p className="mt-1 text-sm text-[#212529]/70">
+                    Click on a card to preview it. Use the icons to edit or delete
+                </p>
             </div>
 
             {/* Поле поиска */}
@@ -76,7 +77,7 @@ export default function CardGrid({
                     {list.map((c) => (
                         <button
                             key={c.id}
-                            className="group rounded-xl border border-[#212529]/10 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                            className="group min-w-0 rounded-xl border border-[#212529]/10 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                             onClick={() => setPreview(c)}
                         >
                             <div className="text-sm font-semibold truncate">{c.front}</div>

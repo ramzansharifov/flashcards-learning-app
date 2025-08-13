@@ -179,7 +179,7 @@ export function Header() {
                                     ) : (
                                         <motion.div className="flex gap-x-2" variants={itemVars}>
                                             <span className="rounded-xl bg-[#4F46E5]/10 px-4 py-2 text-[18px] text-black max-w-72 truncate">
-                                                {user.email}1233455678987654
+                                                {user.email}
                                             </span>
                                             <button
                                                 type="button"

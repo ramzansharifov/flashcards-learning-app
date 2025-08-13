@@ -31,9 +31,9 @@ const SECTIONS: Section[] = [
 ];
 
 const SOCIAL: LinkItem[] = [
-    { label: "GitHub", href: "https://github.com/yourname" },
-    { label: "Telegram", href: "https://t.me/yourusername" },
-    { label: "Gmail", href: "mailto:you@example.com" },
+    { label: "GitHub", href: "https://github.com/ramzansharifov" },
+    { label: "Telegram", href: "https://t.me/Confus_8" },
+    { label: "Gmail", href: "https://ramzan.sharifov2021@gmail.com" },
 ];
 
 export function Footer() {

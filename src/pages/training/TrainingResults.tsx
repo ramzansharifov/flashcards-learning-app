@@ -47,7 +47,13 @@ export default function TrainingResults() {
 
                 <div className="mt-4 flex flex-wrap gap-2">
                     <button
-                        className="rounded-lg bg-[#4F46E5] px-4 py-2 text-sm font-semibold text-white hover:opacity-95 active:opacity-90"
+                        className="rounded-lg border border-[#212529]/15 bg-[#4F46E5] text-white px-4 py-2 text-sm hover:bg-[#4F46E5]/90"
+                        onClick={() => navigate("/dashboard")}
+                    >
+                        Back to Dashboard
+                    </button>
+                    <button
+                        className="rounded-lg border border-[#212529]/15 bg-white px-4 py-2 text-sm hover:bg-white/80"
                         onClick={() => navigate(`/training/${wsId}/${topicId}`)}
                     >
                         Train again
@@ -57,12 +63,6 @@ export default function TrainingResults() {
                         onClick={() => navigate("/training")}
                     >
                         Back to Training
-                    </button>
-                    <button
-                        className="rounded-lg border border-[#212529]/15 bg-white px-4 py-2 text-sm hover:bg-white/80"
-                        onClick={() => navigate("/")}
-                    >
-                        Back to Dashboard
                     </button>
                 </div>
             </div>
