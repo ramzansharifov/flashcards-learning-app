@@ -85,7 +85,7 @@ export default function Auth({ initialTab }: { initialTab?: Mode }) {
                 </button>
                 <p className="text-center text-sm">
                     Don’t have an account?
-                    <button type="button" className="font-semibold text-[#4F46E5] hover:opacity-90" onClick={() => setMode("register")}>
+                    <button type="button" className="font-semibold text-[#4F46E5] hover:opacity-90" onClick={() => setMode("signup")}>
                         Sign up
                     </button>
                 </p>

@@ -130,7 +130,7 @@ export default function CardsJsonForm({ onSubmit }: Props) {
         }
     }, [raw]);
 
-    const submit = async (values: Values, e?: React.BaseSyntheticEvent) => {
+    const submit = async (values: Values) => {
         // Достаём items, которые мы положили в superRefine через ctx.parsedItems
         // react-hook-form резолвер не отдаёт напрямую ctx, поэтому парсим ещё раз безопасно.
         const data = JSON.parse(values.raw);

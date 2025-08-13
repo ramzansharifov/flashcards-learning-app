@@ -1,6 +1,6 @@
 // components/main/FAQ.tsx
-import { useId, useState, useMemo } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useId, useState } from "react";
+import { AnimatePresence, motion, type Variants } from "framer-motion";
 import { PlusIcon } from "../ui/Icons";
 
 type FaqItem = { q: string; a: string };
@@ -56,23 +56,19 @@ export function Faq({
     className = "",
 }: FaqProps) {
     const [open, setOpen] = useState<number | null>(defaultOpenIndex);
-    const reduceMotion = useReducedMotion();
     const groupId = useId();
 
     const handleToggle = (i: number) => {
         setOpen((prev) => (prev === i ? null : i));
     };
 
-    // variants для анимации раскрытия
-    const panelVariants = useMemo(
-        () => ({
-            initial: { height: 0, opacity: 0 },
-            animate: { height: "auto", opacity: 1, transition: { duration: reduceMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] } },
-            exit: { height: 0, opacity: 0, transition: { duration: reduceMotion ? 0 : 0.24 } },
-        }),
-        [reduceMotion]
-    );
+    const EASING: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
+    const panelVariants: Variants = {
+        initial: { height: 0, opacity: 0 },
+        animate: { height: "auto", opacity: 1, transition: { duration: 0.2, ease: EASING } },
+        exit: { height: 0, opacity: 0, transition: { duration: 0.15, ease: EASING } },
+    };
     return (
         <section id="faq" className={`bg-white scroll-mt-[10vh] ${className}`}>
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12" >
