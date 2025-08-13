@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, type Variants } from "framer-motion";
 import { useUser } from "../../hooks/useUser";
 import { ExitIcon } from "../ui/Icons";
 import ConfirmDialog from "../ui/ConfirmDialog";
@@ -15,20 +15,23 @@ export function Header() {
 
     const closeMenu = () => setOpen(false);
 
-    // анимации для мобильного меню
-    const panelVars = {
+    const EASING: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
+    const panelVars: Variants = {
         hidden: { opacity: 0, y: -8 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.18, ease: "easeOut" } },
-        exit: { opacity: 0, y: -8, transition: { duration: 0.12, ease: "easeIn" } },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.18, ease: EASING } },
+        exit: { opacity: 0, y: -8, transition: { duration: 0.12, ease: EASING } },
     };
-    const listVars = {
+
+    const listVars: Variants = {
         hidden: {},
         visible: { transition: { staggerChildren: 0.05, delayChildren: 0.03 } },
         exit: {},
     };
-    const itemVars = {
+
+    const itemVars: Variants = {
         hidden: { opacity: 0, y: -6 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.16, ease: "easeOut" } },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.16, ease: EASING } },
     };
 
     return (

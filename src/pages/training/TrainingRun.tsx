@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { motion } from "framer-motion";
 import PageTitle from "../../components/ui/PageTitle";
 import ProgressBar from "../../components/ui/ProgressBar";
 import { useCards } from "../../hooks/useCards";
