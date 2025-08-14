@@ -150,8 +150,8 @@ export default function TrainingRun() {
             )}
 
             {stage === "run" && queue.length > 0 && currentCard && (
-                <div className="mt-4 max-w-2xl rounded-xl border border-[#212529]/10 bg-white p-5 shadow-sm">
-                    <div className="mb-3 flex items-center justify-between">
+                <div className="mt-4 max-w-2xl rounded-xl border border-[#212529]/10 bg-white py-3 p-5 shadow-sm">
+                    <div className="flex items-center justify-between">
                         <button
                             onClick={() => navigate("/training")}
                             className="text-sm font-semibold text-[#4F46E5] hover:opacity-90"
@@ -169,14 +169,14 @@ export default function TrainingRun() {
                     </div>
 
                     {/* Flip card */}
-                    <div className="mb-4 flex justify-center">
+                    <div className="my-8 flex justify-center">
                         <StudyFlipCard
                             frontText={currentCard.front}
                             backText={currentCard.back}
                             flipped={flipped}
                             onToggleFlip={() => setFlipped((f) => !f)}
                             disabled={answering}
-                            className="relative h-44 w-80 sm:w-96 max-w-full focus:outline-none focus:ring-0 cursor-pointer"
+                            className="relative h-44 w-72 sm:w-96 max-w-full focus:outline-none focus:ring-0 cursor-pointer"
                         />
                     </div>
 

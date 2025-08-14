@@ -85,7 +85,7 @@ export default function Auth({ initialTab }: { initialTab?: Mode }) {
                 </button>
                 <p className="text-center text-sm">
                     Don’t have an account?
-                    <button type="button" className="font-semibold text-[#4F46E5] hover:opacity-90" onClick={() => setMode("signup")}>
+                    <button type="button" className="font-semibold ms-2 text-[#4F46E5] hover:opacity-90" onClick={() => setMode("signup")}>
                         Sign up
                     </button>
                 </p>
@@ -146,7 +146,7 @@ export default function Auth({ initialTab }: { initialTab?: Mode }) {
                 </button>
                 <p className="text-center text-sm">
                     Already have an account?
-                    <button type="button" className="font-semibold text-[#4F46E5] hover:opacity-90" onClick={() => setMode("signin")}>
+                    <button type="button" className="font-semibold ms-2 text-[#4F46E5] hover:opacity-90" onClick={() => setMode("signin")}>
                         Sign In
                     </button>
                 </p>
