@@ -25,7 +25,7 @@ const STEPS: StepItem[] = [
         desc:
             "Create an account with your email to save your progress, workspaces, topics, and flashcards. You can try a demo training without logging in, but the results won’t be saved there.",
         type: "image",
-        src: "/signup-1.png",
+        src: "/signup.png",
         note: "The login button is in the top right corner. After signing up, you will be taken to the Dashboard.",
     },
     {
@@ -124,7 +124,7 @@ function useScrollSpy(ids: string[], offsetPx = 96) {
 function GuideIcon() {
     return (
         <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-[#4F46E5]">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M2 6h4" />
                 <path d="M2 10h4" />
                 <path d="M2 14h4" />
@@ -405,16 +405,49 @@ function MediaFrame({
     poster?: string;
     caption?: string;
 }) {
+    const [finalSrc, setFinalSrc] = useState(src);
+    const [finalPoster, setFinalPoster] = useState(poster);
+
+    useEffect(() => {
+        const isMobile = window.matchMedia("(max-width: 640px)").matches;
+
+        const appendMobileSuffix = (path?: string) => {
+            if (!path) return path;
+            const dotIndex = path.lastIndexOf(".");
+            if (dotIndex === -1) return path;
+            return path.slice(0, dotIndex) + "-m" + path.slice(dotIndex);
+        };
+
+        if (isMobile) {
+            setFinalSrc(appendMobileSuffix(src)!);
+            if (poster) setFinalPoster(appendMobileSuffix(poster));
+        } else {
+            setFinalSrc(src);
+            setFinalPoster(poster);
+        }
+    }, [src, poster]);
+
     return (
         <figure>
             <div className="overflow-hidden rounded-xl border border-[#212529]/10 bg-white">
                 {type === "image" ? (
-                    <img src={src} alt="" className="w-full" />
+                    <img src={finalSrc} alt="" className="w-full" />
                 ) : (
-                    <video className="w-full" controls playsInline preload="metadata" poster={poster} src={src} />
+                    <video
+                        className="w-full"
+                        controls
+                        playsInline
+                        preload="metadata"
+                        poster={finalPoster}
+                        src={finalSrc}
+                    />
                 )}
             </div>
-            {caption && <figcaption className="mt-2 text-xs text-[#212529]/60">{caption}</figcaption>}
+            {caption && (
+                <figcaption className="mt-2 text-xs text-[#212529]/60">
+                    {caption}
+                </figcaption>
+            )}
         </figure>
     );
 }
@@ -537,7 +570,7 @@ function CopyButton({ getText }: { getText: () => string }) {
             className="inline-flex text-[#4F46E5] cursor-pointer items-center gap-2 rounded-lg border border-[#212529]/15 bg-white px-3 py-1.5 text-[12px] font-semibold hover:bg-white/80"
             aria-live="polite"
         >
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
                 <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
             </svg>

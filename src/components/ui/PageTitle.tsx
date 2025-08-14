@@ -15,7 +15,7 @@ export default function PageTitle({
         <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
                 {icon && (
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#4F46E5]/10 text-[#4F46E5]">
+                    <span className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#4F46E5]/10 text-[#4F46E5]">
                         {icon}
                     </span>
                 )}

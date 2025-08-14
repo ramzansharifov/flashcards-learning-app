@@ -3,7 +3,7 @@ type Section = { title: string; links: LinkItem[] };
 
 const SECTIONS: Section[] = [
     {
-        title: "Navigation",
+        title: "Home Navigation",
         links: [
             { label: "How It Works", href: "#how-it-works" },
             { label: "Scientific Basis", href: "#evidence" },
@@ -23,9 +23,9 @@ const SECTIONS: Section[] = [
     {
         title: "Resources",
         links: [
-            { label: "My GitHub", href: "" },
+            { label: "My GitHub", href: "https://github.com/ramzansharifov" },
             { label: "Resume (PDF)", href: "" },
-            { label: "My Contacts", href: "" },
+            { label: "My Contacts", href: "https://ramzan.sharifov2021@gmail.com" },
         ],
     },
 ];
@@ -44,10 +44,10 @@ export function Footer() {
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
                 {/* Верх: логотип + краткий текст + соцсети */}
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <a href="/" className="flex items-center gap-2" aria-label="Go to main page">
+                    <div className="flex items-center gap-2">
                         <img src="/book.png" alt="" className="w-8" />
                         <span className="text-2xl font-semibold">FlashCards</span>
-                    </a>
+                    </div>
 
                     <div className="flex items-center gap-3" aria-label="Social Media">
                         {SOCIAL.map((s) => (
